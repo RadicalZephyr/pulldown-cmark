@@ -79,7 +79,7 @@ pub struct ParseInfo<'a> {
     pub links: HashMap<String, (Cow<'a, str>, Cow<'a, str>)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Tag<'a> {
     // block-level tags
     Paragraph,
@@ -126,7 +126,7 @@ pub enum Event<'a> {
     HardBreak,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Alignment {
     None,
     Left,

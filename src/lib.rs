@@ -30,6 +30,7 @@ pub mod html;
 #[macro_use]
 extern crate bitflags;
 
+mod ast;
 mod passes;
 mod parse;
 mod scanners;
@@ -38,5 +39,6 @@ mod escape;
 mod puncttable;
 mod utils;
 
+pub use ast::Node;
 pub use passes::Parser;
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};
