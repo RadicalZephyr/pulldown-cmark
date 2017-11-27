@@ -5,10 +5,9 @@ use std::iter::Iterator;
 use std::mem::discriminant;
 use std::rc::Rc;
 
-pub struct Node<'a>
-{
+pub struct Node<'a> {
     tag: Rc<Tag<'a>>,
-    content: Box<Iterator<Item = Event<'a>>>
+    pub content: Content<'a>,
 }
 
 impl<'a> Node<'a> {
@@ -23,10 +22,10 @@ impl<'a> Node<'a> {
                     let tag = Rc::new(tag);
                     Node {
                         tag: tag.clone(),
-                        content: Box::new(iter.take_while(move |i| match *i {
+                        content: Content::new(Box::new(iter.take_while(move |i| match *i {
                             Event::End(ref end_tag) => discriminant(tag.borrow()) == discriminant(end_tag),
                             _ => true,
-                        })),
+                        }))),
                     }
                 },
                 _ => panic!(),
@@ -36,5 +35,34 @@ impl<'a> Node<'a> {
 
     pub fn tag(&self) -> &Tag<'a> {
         self.tag.borrow()
+    }
+}
+
+pub struct Content<'a> {
+    iter: Box<Iterator<Item = Event<'a>>>,
+}
+
+impl<'a> Iterator for Content<'a>
+where
+    'a: 'static,
+{
+    type Item = Node<'a>;
+
+    fn next(&mut self) -> Option<Node<'a>> {
+        None
+    }
+}
+
+impl<'a> Content<'a>
+where
+    'a: 'static,
+{
+    pub fn new<I>(iter: Box<I>) -> Content<'a>
+    where
+        I : 'static + Iterator<Item = Event<'a>>
+    {
+        Content {
+            iter,
+        }
     }
 }
