@@ -2,7 +2,7 @@ pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENA
 
 use std::borrow::Borrow;
 use std::iter::Iterator;
-use std::mem::discriminant;
+use std::mem::{discriminant,swap};
 use std::rc::Rc;
 
 pub struct Node<'a> {
@@ -39,7 +39,7 @@ impl<'a> Node<'a> {
 }
 
 pub struct Content<'a> {
-    iter: Box<Iterator<Item = Event<'a>>>,
+    iter: Option<Box<Iterator<Item = Event<'a>>>>,
 }
 
 impl<'a> Iterator for Content<'a>
@@ -49,7 +49,9 @@ where
     type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Node<'a>> {
-        None
+        let mut iter = None;
+        swap(&mut self.iter, &mut iter);
+        iter.and_then(|i| Node::new(i))
     }
 }
 
@@ -62,7 +64,7 @@ where
         I : 'static + Iterator<Item = Event<'a>>
     {
         Content {
-            iter,
+            iter: Some(iter)
         }
     }
 }
