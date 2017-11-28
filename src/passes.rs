@@ -20,6 +20,7 @@
 
 //! Main public pull parse interface, running two passes over input.
 
+use ::ast;
 use parse::{RawParser, Event, Tag, Options, OPTION_FIRST_PASS};
 use std::collections::HashSet;
 
@@ -55,6 +56,10 @@ impl<'a> Parser<'a> {
 
     pub fn get_offset(&self) -> usize {
         self.inner.get_offset()
+    }
+
+    pub fn into_ast<'b>(self) -> ast::Content<'a, 'b> {
+        ast::Content::new(Box::new(self))
     }
 }
 

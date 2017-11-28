@@ -39,6 +39,6 @@ mod escape;
 mod puncttable;
 mod utils;
 
-pub use ast::Node;
+pub use ast::{Content, Node};
 pub use passes::Parser;
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};

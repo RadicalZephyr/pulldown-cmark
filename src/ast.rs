@@ -37,16 +37,21 @@ fn split_when<'a, I, F>(iter: I, pred: F) -> (KeepUntil<'a>, DropUntil<'a>) {
     (KeepUntil::default(), DropUntil::default())
 }
 
-pub struct Node<'a> {
+pub struct Node<'a, 'b>
+where
+    'a: 'b,
+{
     tag: Rc<Tag<'a>>,
-    pub content: Content<'a>,
+    pub content: Content<'a, 'b>,
 }
 
-impl<'a> Node<'a> {
-    pub fn new<InIter>(mut iter: InIter) -> Option<(Node<'a>, u8)>
+impl<'a, 'b> Node<'a, 'b>
+where
+    'a: 'b,
+{
+    pub fn new<InIter>(mut iter: InIter) -> Option<(Node<'a, 'b>, u8)>
         where
-        'a: 'static,
-        InIter: 'static + Iterator<Item = Event<'a>>
+        InIter: 'b + Iterator<Item = Event<'a>>
     {
         iter.next().map(|i| {
             match i {
@@ -77,17 +82,20 @@ impl<'a> Node<'a> {
     }
 }
 
-pub struct Content<'a> {
-    iter: Option<Box<Iterator<Item = Event<'a>>>>,
+pub struct Content<'a, 'b>
+    where
+    'a: 'b,
+{
+    iter: Option<Box<'b + Iterator<Item = Event<'a>>>>,
 }
 
-impl<'a> Iterator for Content<'a>
+impl<'a, 'b> Iterator for Content<'a, 'b>
 where
-    'a: 'static,
+    'a: 'b,
 {
-    type Item = Node<'a>;
+    type Item = Node<'a, 'b>;
 
-    fn next(&mut self) -> Option<Node<'a>> {
+    fn next(&mut self) -> Option<Node<'a, 'b>> {
         let mut iter = None;
         swap(&mut self.iter, &mut iter);
         iter.and_then(|i| {
@@ -96,13 +104,13 @@ where
     }
 }
 
-impl<'a> Content<'a>
+impl<'a, 'b> Content<'a, 'b>
 where
-    'a: 'static,
+    'a: 'b,
 {
-    pub fn new<I>(iter: Box<I>) -> Content<'a>
+    pub fn new<I>(iter: Box<I>) -> Content<'a, 'b>
     where
-        I : 'static + Iterator<Item = Event<'a>>
+         I : 'b + Iterator<Item = Event<'a>>
     {
         Content {
             iter: Some(iter)
