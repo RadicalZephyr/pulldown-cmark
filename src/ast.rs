@@ -8,29 +8,31 @@ use std::mem::{discriminant,swap};
 use std::rc::Rc;
 
 #[derive(Default)]
-struct KeepUntil<'a, 'b, I>
+struct KeepUntil<'a, 'b, I, F>
 where
     'a: 'b,
     I: 'b + Iterator<Item = Event<'a>>
 {
     iter: Option<Rc<I>>,
+    pred: Rc<F>,
     _t: PhantomData<Event<'a>>,
     _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
 }
 
 #[derive(Default)]
-struct DropUntil<'a, 'b, I>
+struct DropUntil<'a, 'b, I, F>
 where
     'a: 'b,
     I: 'b + Iterator<Item = Event<'a>>
 {
     iter: Option<Rc<I>>,
+    pred: Rc<F>,
     _t: PhantomData<Event<'a>>,
     _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
 }
 
 
-impl<'a, 'b, I> Iterator for KeepUntil<'a, 'b, I>
+impl<'a, 'b, I, F> Iterator for KeepUntil<'a, 'b, I, F>
 where
     'a: 'b,
     I: 'b + Iterator<Item = Event<'a>>
@@ -42,7 +44,7 @@ where
     }
 }
 
-impl<'a, 'b, I> Iterator for DropUntil<'a, 'b, I>
+impl<'a, 'b, I, F> Iterator for DropUntil<'a, 'b, I, F>
 where
     I: 'b + Iterator<Item = Event<'a>>
 {
@@ -53,13 +55,16 @@ where
     }
 }
 
-fn split_when<'a, 'b, I, F>(iter: I, pred: F) -> (KeepUntil<'a, 'b, I>, DropUntil<'a, 'b, I>)
+fn split_when<'a, 'b, I, F>(iter: I, pred: F) -> (KeepUntil<'a, 'b, I, F>, DropUntil<'a, 'b, I, F>)
 where
     I: 'b + Iterator<Item = Event<'a>>
 {
     let iter: Option<Rc<I>> = Rc::new(iter).into();
-    (KeepUntil { iter: iter.clone(), _t: Default::default(), _t2: Default::default() },
-     DropUntil { iter, _t: Default::default(), _t2: Default::default() })
+    let pred = Rc::new(pred);
+    (KeepUntil { iter: iter.clone(), pred: pred.clone(),
+                 _t: Default::default(), _t2: Default::default() },
+     DropUntil { iter, pred,
+                 _t: Default::default(), _t2: Default::default() })
 }
 
 pub struct Node<'a, 'b>
@@ -90,7 +95,7 @@ where
                             _ => true,
                         }
                     };
-                    let (content, rest) = split_when(iter, pred);
+                    let (content, _rest) = split_when(iter, pred);
                     let content = Content::new(Box::new(content));
                     (Node {
                         tag,
