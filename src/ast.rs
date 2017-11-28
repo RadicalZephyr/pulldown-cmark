@@ -20,12 +20,15 @@ impl<'a> Node<'a> {
             match i {
                 Event::Start(tag) => {
                     let tag = Rc::new(tag);
+                    let tag2 = tag.clone();
+                    let content = iter.take_while(move |i| match *i {
+                        Event::End(ref end_tag) => discriminant(tag2.borrow()) == discriminant(end_tag),
+                        _ => true,
+                    });
+                    let content = Content::new(Box::new(content));
                     Node {
-                        tag: tag.clone(),
-                        content: Content::new(Box::new(iter.take_while(move |i| match *i {
-                            Event::End(ref end_tag) => discriminant(tag.borrow()) == discriminant(end_tag),
-                            _ => true,
-                        }))),
+                        tag,
+                        content,
                     }
                 },
                 _ => panic!(),
