@@ -21,11 +21,15 @@ impl<'a> Node<'a> {
                 Event::Start(tag) => {
                     let tag = Rc::new(tag);
                     let tag2 = tag.clone();
-                    let content = iter.take_while(move |i| match *i {
-                        Event::End(ref end_tag) => discriminant(tag2.borrow()) == discriminant(end_tag),
-                        _ => true,
-                    });
-                    let content = Content::new(Box::new(content));
+
+                    let pred = move |e: &Event<'a>| {
+                        match *e {
+                            Event::End(ref end_tag) => discriminant(tag2.borrow()) == discriminant(end_tag),
+                            _ => true,
+                        }
+                    };
+                    let content = iter.take_while(pred);
+                          let content = Content::new(Box::new(content));
                     Node {
                         tag,
                         content,
