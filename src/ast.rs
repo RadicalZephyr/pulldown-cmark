@@ -41,29 +41,21 @@ where
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Event<'a>> {
-        match self.iter {
-            Some(ref mut i) => {
-                let mut i: Option<&mut I> = Rc::get_mut(i);
-                match i {
-                    Some(ref mut i) => {
-                        match i.next() {
-                            Some(e) => {
-                                let pred: &F = self.pred.borrow();
-                                if pred(&e) {
-                                    self.iter = None;
-                                    None
-                                } else {
-                                    Some(e)
-                                }
-                            },
-                            None => None
-                        }
-                    },
-                    None => None
-                }
-            },
-            None => None
-        }
+        let mut iter_opt = None;
+        swap(&mut self.iter, &mut iter_opt);
+
+        iter_opt.as_mut().and_then(|iter_ref| {
+            Rc::get_mut(iter_ref)
+        }).and_then(|iter| {
+            iter.next()
+        }).and_then(|e| {
+            let pred: &F = self.pred.borrow();
+            if pred(&e) {
+                None
+            } else {
+                Some(e)
+            }
+        })
     }
 }
 
@@ -103,8 +95,8 @@ where
     'a: 'b,
 {
     pub fn new<InIter>(mut iter: InIter) -> Option<(Node<'a, 'b>, u8)>
-        where
-        InIter: 'b + Iterator<Item = Event<'a>>
+    where
+        InIter: 'b + Iterator<Item = Event<'a>>,
     {
         iter.next().map(|i| {
             match i {
@@ -123,7 +115,8 @@ where
                     (Node {
                         tag,
                         content,
-                    }, 0)
+                    },
+                    0)
                 },
                 _ => panic!(),
             }
