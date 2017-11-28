@@ -2,8 +2,40 @@ pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENA
 
 use std::borrow::Borrow;
 use std::iter::Iterator;
+use std::marker::PhantomData;
 use std::mem::{discriminant,swap};
 use std::rc::Rc;
+
+#[derive(Default)]
+struct KeepUntil<'a> {
+    _t: PhantomData<Event<'a>>,
+}
+
+#[derive(Default)]
+struct DropUntil<'a> {
+    _t: PhantomData<Event<'a>>,
+}
+
+
+impl<'a> Iterator for KeepUntil<'a> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Event<'a>> {
+        None
+    }
+}
+
+impl<'a> Iterator for DropUntil<'a> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Event<'a>> {
+        None
+    }
+}
+
+fn split_when<'a, I, F>(iter: I, pred: F) -> (KeepUntil<'a>, DropUntil<'a>) {
+    (KeepUntil::default(), DropUntil::default())
+}
 
 pub struct Node<'a> {
     tag: Rc<Tag<'a>>,
