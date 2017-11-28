@@ -29,7 +29,7 @@ fn ast_contents_first_node() {
 }
 
 #[test]
-fn ast_contents_first_node_first_child() {
+fn first_child_of_first_node() {
     let original = r##"# [link](/to/here)
 "##;
 
@@ -44,5 +44,23 @@ fn ast_contents_first_node_first_child() {
     assert!(children_head.is_some());
     assert_eq!(&Tag::Link("/to/here".into(), "".into()),
                children_head.unwrap().tag());
+
+}
+
+#[test]
+fn past_first_child() {
+    let original = r##"# [link](/to/here)
+"##;
+
+    let p = Parser::new(&original);
+    let mut content = Content::new(Box::new(p));
+    let head = content.next();
+    assert!(head.is_some());
+
+    let second = content.next();
+    assert!(second.is_some());
+
+    // assert_eq!(&Tag::Link("/to/here".into(), "".into()),
+    //            content_head.unwrap().tag());
 
 }

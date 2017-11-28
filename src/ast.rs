@@ -1,23 +1,40 @@
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};
 
 use std::borrow::Borrow;
+use std::default::Default;
 use std::iter::Iterator;
 use std::marker::PhantomData;
 use std::mem::{discriminant,swap};
 use std::rc::Rc;
 
 #[derive(Default)]
-struct KeepUntil<'a> {
+struct KeepUntil<'a, 'b, I>
+where
+    'a: 'b,
+    I: 'b + Iterator<Item = Event<'a>>
+{
+    iter: Option<Rc<I>>,
     _t: PhantomData<Event<'a>>,
+    _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
 }
 
 #[derive(Default)]
-struct DropUntil<'a> {
+struct DropUntil<'a, 'b, I>
+where
+    'a: 'b,
+    I: 'b + Iterator<Item = Event<'a>>
+{
+    iter: Option<Rc<I>>,
     _t: PhantomData<Event<'a>>,
+    _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
 }
 
 
-impl<'a> Iterator for KeepUntil<'a> {
+impl<'a, 'b, I> Iterator for KeepUntil<'a, 'b, I>
+where
+    'a: 'b,
+    I: 'b + Iterator<Item = Event<'a>>
+{
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Event<'a>> {
@@ -25,7 +42,10 @@ impl<'a> Iterator for KeepUntil<'a> {
     }
 }
 
-impl<'a> Iterator for DropUntil<'a> {
+impl<'a, 'b, I> Iterator for DropUntil<'a, 'b, I>
+where
+    I: 'b + Iterator<Item = Event<'a>>
+{
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Event<'a>> {
@@ -33,8 +53,13 @@ impl<'a> Iterator for DropUntil<'a> {
     }
 }
 
-fn split_when<'a, I, F>(iter: I, pred: F) -> (KeepUntil<'a>, DropUntil<'a>) {
-    (KeepUntil::default(), DropUntil::default())
+fn split_when<'a, 'b, I, F>(iter: I, pred: F) -> (KeepUntil<'a, 'b, I>, DropUntil<'a, 'b, I>)
+where
+    I: 'b + Iterator<Item = Event<'a>>
+{
+    let iter: Option<Rc<I>> = Rc::new(iter).into();
+    (KeepUntil { iter: iter.clone(), _t: Default::default(), _t2: Default::default() },
+     DropUntil { iter, _t: Default::default(), _t2: Default::default() })
 }
 
 pub struct Node<'a, 'b>
@@ -65,7 +90,7 @@ where
                             _ => true,
                         }
                     };
-                    let content = iter.take_while(pred);
+                    let (content, rest) = split_when(iter, pred);
                     let content = Content::new(Box::new(content));
                     (Node {
                         tag,
