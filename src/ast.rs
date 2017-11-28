@@ -35,12 +35,35 @@ where
 impl<'a, 'b, I, F> Iterator for KeepUntil<'a, 'b, I, F>
 where
     'a: 'b,
+    F: Fn(&Event<'a>) -> bool,
     I: 'b + Iterator<Item = Event<'a>>
 {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Event<'a>> {
-        None
+        match self.iter {
+            Some(ref mut i) => {
+                let mut i: Option<&mut I> = Rc::get_mut(i);
+                match i {
+                    Some(ref mut i) => {
+                        match i.next() {
+                            Some(e) => {
+                                let pred: &F = self.pred.borrow();
+                                if pred(&e) {
+                                    self.iter = None;
+                                    None
+                                } else {
+                                    Some(e)
+                                }
+                            },
+                            None => None
+                        }
+                    },
+                    None => None
+                }
+            },
+            None => None
+        }
     }
 }
 
