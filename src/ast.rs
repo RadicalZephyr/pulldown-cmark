@@ -43,7 +43,7 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new<InIter>(mut iter: InIter) -> Option<Node<'a>>
+    pub fn new<InIter>(mut iter: InIter) -> Option<(Node<'a>, u8)>
         where
         'a: 'static,
         InIter: 'static + Iterator<Item = Event<'a>>
@@ -61,11 +61,11 @@ impl<'a> Node<'a> {
                         }
                     };
                     let content = iter.take_while(pred);
-                          let content = Content::new(Box::new(content));
-                    Node {
+                    let content = Content::new(Box::new(content));
+                    (Node {
                         tag,
                         content,
-                    }
+                    }, 0)
                 },
                 _ => panic!(),
             }
@@ -90,7 +90,9 @@ where
     fn next(&mut self) -> Option<Node<'a>> {
         let mut iter = None;
         swap(&mut self.iter, &mut iter);
-        iter.and_then(|i| Node::new(i))
+        iter.and_then(|i| {
+            Node::new(i).map(|(node, _)| node)
+        })
     }
 }
 
