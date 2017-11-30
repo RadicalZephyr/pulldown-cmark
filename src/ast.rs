@@ -8,13 +8,13 @@ use std::vec::IntoIter;
 
 use super::collect_while;
 
-pub struct Node<'a> {
+pub struct TagNode<'a> {
     tag: Tag<'a>,
     pub content: Content<'a, IntoIter<Event<'a>>>,
 }
 
-impl<'a> Node<'a> {
-    pub fn try_from<I>(iter: &mut Peekable<I>) -> Option<Node<'a>>
+impl<'a> TagNode<'a> {
+    pub fn try_from<I>(iter: &mut Peekable<I>) -> Option<TagNode<'a>>
     where
         I: Iterator<Item = Event<'a>>,
     {
@@ -27,7 +27,7 @@ impl<'a> Node<'a> {
                         _ => false,
                     }
                 });
-                Node {
+                TagNode {
                     tag: start_tag,
                     content: Content::new(content.into_iter()),
                 }.into()
@@ -59,10 +59,10 @@ where I: Iterator<Item = Event<'a>> {
 
 impl<'a, I> Iterator for Content<'a, I>
 where I: Iterator<Item = Event<'a>> {
-    type Item = Node<'a>;
+    type Item = TagNode<'a>;
 
-    fn next(&mut self) -> Option<Node<'a>> {
-        Node::try_from(&mut self.iter)
+    fn next(&mut self) -> Option<TagNode<'a>> {
+        TagNode::try_from(&mut self.iter)
     }
 }
 
