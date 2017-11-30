@@ -54,7 +54,7 @@ where
     I : Iterator,
 {
     iter: Rc<RefCell<Peekable<I>>>,
-    predicate: Option<Rc<P>>,
+    predicate: Rc<P>,
 }
 
 impl<I, P> Iterator for DropUntil<I, P>
@@ -65,33 +65,24 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<I::Item> {
-        let mut pred_opt = None;
-        swap(&mut self.predicate, &mut pred_opt);
-
-        match pred_opt {
-            Some(predicate) => {
-                let result = self.iter.try_borrow_mut().ok().and_then(|mut iter| {
-                    let mut do_next;
-                    loop {
-                        do_next = iter.peek().map(|item| {
-                            let predicate: &P = predicate.borrow();
-                            predicate(item)
-                        });
-                        match do_next {
-                            Some(true) => iter.next(),
-                            Some(false) | None => break,
-                        };
-                    }
-
-                    match do_next {
-                        Some(false) => iter.next(),
-                        Some(true) | None => None,
-                    }
+        self.iter.try_borrow_mut().ok().and_then(|mut iter| {
+            let mut do_next;
+            loop {
+                do_next = iter.peek().map(|item| {
+                    let predicate: &P = self.predicate.borrow();
+                    predicate(item)
                 });
-                result
-            },
-            None => self.iter.try_borrow_mut().ok().and_then(|mut iter| iter.next())
-        }
+                match do_next {
+                    Some(true) => iter.next(),
+                    Some(false) | None => break,
+                };
+            }
+
+            match do_next {
+                Some(false) => iter.next(),
+                Some(true) | None => None,
+            }
+        })
     }
 }
 
@@ -110,7 +101,7 @@ where
         },
         DropUntil {
             iter,
-            predicate: predicate.into()
+            predicate,
         }
     )
 }
