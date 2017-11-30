@@ -1,107 +1,69 @@
-use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::iter::{Iterator, Peekable};
-use std::mem::swap;
+use std::fmt::Debug;
+use std::iter::Iterator;
 use std::rc::Rc;
+use std::vec::IntoIter;
 
-pub struct KeepUntil<I, P>
-where
-    I : Iterator,
-{
-    iter: Option<Rc<RefCell<Peekable<I>>>>,
-    predicate: Rc<P>,
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[derive(Clone)]
+pub struct TakeWhile<I, P> {
+    iter: Rc<RefCell<I>>,
+    flag: bool,
+    predicate: P,
 }
 
-impl<I, P> Iterator for KeepUntil<I, P>
-where
-    P: Fn(&I::Item) -> bool,
-    I: Iterator,
+impl<I: Iterator, P> Iterator for TakeWhile<I, P>
+    where P: FnMut(&I::Item) -> bool
 {
     type Item = I::Item;
 
+    #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let mut iter_opt = None;
-        swap(&mut self.iter, &mut iter_opt);
-
-        match iter_opt {
-            Some(iter_ref) => {
-                {
-                    let iter_copy = Rc::clone(&iter_ref);
-                    let result = iter_ref.try_borrow_mut().ok().and_then(|mut iter| {
-                        let do_next = iter.peek().map(|item| {
-                            let pred: &P = self.predicate.borrow();
-                            pred(item)
-                        });
-
-                        match do_next {
-                            Some(true) => {
-                                self.iter = Some(iter_copy);
-                                iter.next()
-                            },
-                            Some(false) | None => None
-                        }
-                    });
-                    result
-                }
-            },
-            None => None
+        if self.flag {
+            None
+        } else {
+            match self.iter.try_borrow_mut().ok() {
+                Some(mut iter) => {
+                    match iter.next() {
+                        Some(x) => {
+                            if (self.predicate)(&x) {
+                                Some(x)
+                            } else {
+                                self.flag = true;
+                                None
+                            }
+                        },
+                        None => None,
+                    }
+                },
+                None => None,
+            }
         }
     }
-}
 
-pub struct DropUntil<I, P>
-where
-    I : Iterator,
-{
-    iter: Rc<RefCell<Peekable<I>>>,
-    predicate: Rc<P>,
-}
-
-impl<I, P> Iterator for DropUntil<I, P>
-where
-    P: Fn(&I::Item) -> bool,
-    I: Iterator,
-{
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<I::Item> {
-        self.iter.try_borrow_mut().ok().and_then(|mut iter| {
-            let mut do_next;
-            loop {
-                do_next = iter.peek().map(|item| {
-                    let predicate: &P = self.predicate.borrow();
-                    predicate(item)
-                });
-                match do_next {
-                    Some(true) => iter.next(),
-                    Some(false) | None => break,
-                };
-            }
-
-            match do_next {
-                Some(false) => iter.next(),
-                Some(true) | None => None,
-            }
-        })
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.borrow().size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
-pub fn split_by<I, P>(iter: I, predicate: P) -> (KeepUntil<I, P>, DropUntil<I, P>)
+fn take_while<I, P>(iter: Rc<RefCell<I>>, predicate: P) -> TakeWhile<I, P> {
+    TakeWhile {
+        iter,
+        flag: false,
+        predicate
+    }
+}
+
+pub fn split_by<I, P>(iter: I, predicate: P) -> (IntoIter<I::Item>, I)
 where
-    I: Iterator,
+    I: Debug + Iterator,
     P: Fn(&I::Item) -> bool
 {
-    let iter: Peekable<I> = iter.peekable();
-    let iter: Rc<RefCell<Peekable<I>>> = Rc::new(RefCell::new(iter));
-    let predicate = Rc::new(predicate);
-    (
-        KeepUntil{
-            iter: Some(Rc::clone(&iter)),
-            predicate: Rc::clone(&predicate),
-        },
-        DropUntil {
-            iter,
-            predicate,
-        }
-    )
+    let iter = Rc::new(RefCell::new(iter));
+    let keeps: Vec<_> = take_while(Rc::clone(&iter), predicate).collect();
+
+    (keeps.into_iter(),
+     Rc::try_unwrap(iter).unwrap().into_inner())
 }
