@@ -20,7 +20,7 @@ fn ast_contents_first_node() {
 "##;
 
     let p = Parser::new(&original);
-    let mut content = Content::new(Box::new(p));
+    let mut content = Content::new(p);
     let content_head = content.next();
     assert!(content_head.is_some());
     assert_eq!(&Tag::Header(1),

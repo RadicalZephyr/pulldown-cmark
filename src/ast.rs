@@ -3,43 +3,131 @@ pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENA
 use std::borrow::Borrow;
 use std::iter::Iterator;
 use std::marker::PhantomData;
-use std::mem::{discriminant,swap};
+use std::mem::{discriminant, swap};
 use std::rc::Rc;
+use std::vec::IntoIter;
 
 use super::split_by::split_by;
 
-pub struct Node<'a, T> {
-    tag: T,
-    pub content: Content<'a, T>
+pub struct Node<'a> {
+    tag: Rc<Tag<'a>>,
+    pub content: Content<'a, IntoIter<Event<'a>>>,
 }
 
-impl<'a, T> Node<'a, T> {
-    pub fn tag(&self) -> &T {
+impl<'a> Node<'a> {
+    pub fn try_from<I>(iter: I) -> Option<Node<'a>> {
+        None
+    }
+
+    pub fn tag(&self) -> &Tag<'a> {
         self.tag.borrow()
     }
 }
 
-pub struct Content<'a, T> {
-    iter: Option<Box<Iterator<Item = T>>>,
+pub struct Content<'a, I>
+where I: Iterator<Item = Event<'a>> {
+    iter: I,
     _t: PhantomData<&'a str>,
 }
 
-impl<'a, T> Content<'a, T> {
-    pub fn new(iter: Box<Iterator<Item = T>>) -> Content<'a, T> {
+impl<'a, I> Content<'a, I>
+where I: Iterator<Item = Event<'a>> {
+    pub fn new(iter: I) -> Content<'a, I> {
         Content {
-            iter: Some(iter),
+            iter,
             _t: PhantomData,
         }
     }
 }
 
-impl<'a, T> Iterator for Content<'a, T> {
-    type Item = Node<'a, Tag<'a>>;
+impl<'a, I> Iterator for Content<'a, I>
+where I: Iterator<Item = Event<'a>> {
+    type Item = Node<'a>;
 
-    fn next(&mut self) -> Option<Node<'a, Tag<'a>>> {
+    fn next(&mut self) -> Option<Node<'a>> {
         None
     }
 }
+
+// pub struct Node<'a, I, T>
+// where
+//     I: Iterator<Item = Event<'a>>
+// {
+//     tag: T,
+//     pub content: Content<'a, I>
+// }
+
+// impl<'a, I, T> Node<'a, I, T>
+// where
+//     I: Iterator<Item = Event<'a>>
+// {
+//     pub fn try_from(iter: I) -> Option<(Node<'a, I, T>, I)>
+//     {
+//         iter.next().map(|i| {
+//             match i {
+//                 Event::Start(tag) => {
+//                     let tag: Rc<Tag<'a>> = Rc::new(tag);
+//                     let tag2 = tag.clone();
+
+//                     let pred = move |e: &Event<'a>| {
+//                         match *e {
+//                             Event::End(ref end_tag) => discriminant(tag2.borrow()) == discriminant(end_tag),
+//                             _ => true,
+//                         }
+//                     };
+//                     let (content, rest) = split_by(iter, pred);
+//                     let content = Content::new(Box::new(content));
+//                     (Node {
+//                         tag,
+//                         content,
+//                     },
+//                      rest)
+//                 },
+//                 _ => panic!(),
+//             }
+//         })
+//     }
+
+//     pub fn tag(&self) -> &T {
+//         self.tag.borrow()
+//     }
+// }
+
+// pub struct Content<'a, I>
+// where
+//     I: Iterator,
+// {
+//     iter: IntoIter<I::Item>,
+//     _t: PhantomData<&'a str>,
+// }
+
+// impl<'a, I> Content<'a, I>
+// where
+//     I: Iterator<Item = Event<'a>>
+// {
+//     pub fn new(iter: IntoIter<I::Item>) -> Content<'a, I> {
+//         Content {
+//             iter: Some(iter),
+//             _t: PhantomData,
+//         }
+//     }
+// }
+
+// impl<'a, I> Iterator for Content<'a, I>
+// where
+//     I: Iterator<Item = Event<'a>>
+// {
+//     type Item = Node<'a, Self, Tag<'a>>;
+
+//     fn next(&mut self) -> Option<Node<'a, Self, Tag<'a>>> {
+//         let mut iter = None;
+//         swap(&mut self.iter, &mut iter);
+
+//         iter.and_then(|i| {
+//             Node::try_from(i).map(|(node, _)| node)
+//         })
+//     }
+// }
 
 // pub struct Node<'a, 'b>
 // where
