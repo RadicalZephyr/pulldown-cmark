@@ -1,13 +1,11 @@
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};
 
 use std::borrow::Borrow;
-use std::default::Default;
 use std::iter::Iterator;
-use std::marker::PhantomData;
 use std::mem::{discriminant,swap};
 use std::rc::Rc;
 
-use super::split_by::SplitBy;
+use super::split_by::split_by;
 
 pub struct Node<'a, 'b>
 where
@@ -37,7 +35,7 @@ where
                             _ => true,
                         }
                     };
-                    let (content, _rest) = iter.split_by(pred);
+                    let (content, _rest) = split_by(iter, pred);
                     let content = Content::new(Box::new(content));
                     (Node {
                         tag,
