@@ -30,16 +30,14 @@ where
                     let result = iter_ref.try_borrow_mut().ok().and_then(|mut iter| {
                         let do_next = iter.peek().map(|item| {
                             let pred: &P = self.predicate.borrow();
-                            if pred(item) {
-                                self.iter = Some(iter_copy);
-                                true
-                            } else {
-                                false
-                            }
+                            pred(item)
                         });
 
                         match do_next {
-                            Some(true) => iter.next(),
+                            Some(true) => {
+                                self.iter = Some(iter_copy);
+                                iter.next()
+                            },
                             Some(false) | None => None
                         }
                     });
@@ -73,20 +71,21 @@ where
         match pred_opt {
             Some(predicate) => {
                 let result = self.iter.try_borrow_mut().ok().and_then(|mut iter| {
-                    let mut do_next = None;
+                    let mut do_next;
                     loop {
                         do_next = iter.peek().map(|item| {
                             let predicate: &P = predicate.borrow();
-                            !predicate(item)
+                            predicate(item)
                         });
-                        if do_next.is_some() {
-                            break;
-                        }
+                        match do_next {
+                            Some(true) => iter.next(),
+                            Some(false) | None => break,
+                        };
                     }
 
                     match do_next {
-                        Some(true) => iter.next(),
-                        Some(false) | None => None,
+                        Some(false) => iter.next(),
+                        Some(true) | None => None,
                     }
                 });
                 result
