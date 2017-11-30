@@ -1,11 +1,14 @@
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::iter::Iterator;
+use std::iter::{Iterator, Peekable};
 use std::mem::swap;
 use std::rc::Rc;
 
-pub struct KeepUntil<I, P> {
-    iter: Option<Rc<RefCell<I>>>,
+pub struct KeepUntil<I, P>
+where
+    I : Iterator,
+{
+    iter: Option<Rc<RefCell<Peekable<I>>>>,
     predicate: Rc<P>,
 }
 
@@ -25,12 +28,18 @@ where
                 {
                     let iter_copy = Rc::clone(&iter_ref);
                     let result = iter_ref.try_borrow_mut().ok().and_then(|mut iter| {
-                        iter.next()
-                    }).and_then(|e| {
-                        let pred: &P = self.predicate.borrow();
-                        if pred(&e) {
-                            self.iter = Some(iter_copy);
-                            Some(e)
+                        let do_next = iter.peek().map(|item| {
+                            let pred: &P = self.predicate.borrow();
+                            if pred(item) {
+                                self.iter = Some(iter_copy);
+                                Some(())
+                            } else {
+                                None
+                            }
+                        });
+
+                        if do_next.is_some() {
+                            iter.next()
                         } else {
                             None
                         }
@@ -43,8 +52,11 @@ where
     }
 }
 
-pub struct DropUntil<I, P> {
-    iter: Rc<RefCell<I>>,
+pub struct DropUntil<I, P>
+where
+    I : Iterator,
+{
+    iter: Rc<RefCell<Peekable<I>>>,
     predicate: Option<Rc<P>>,
 }
 
@@ -63,12 +75,10 @@ where
             Some(predicate) => {
                 let predicate: &P = predicate.borrow();
                 let result = self.iter.try_borrow_mut().ok().and_then(|mut iter| {
-                    let mut item = None;
                     loop {
-                        println!("Looping!");
-                        item = iter.next();
+                        let item = iter.peek();
                         match item {
-                            Some(ref item) => {
+                            Some(item) => {
                                 if !predicate(item) {
                                     break;
                                 }
@@ -76,7 +86,7 @@ where
                             None => (),
                         }
                     }
-                    item
+                    iter.next()
                 });
                 result
             },
@@ -85,33 +95,22 @@ where
     }
 }
 
-pub trait SplitBy {
-    fn split_by<P>(self, P) -> (KeepUntil<Self, P>, DropUntil<Self, P>)
-        where
-        Self: Sized + Iterator,
-        P: Fn(&Self::Item) -> bool;
-}
-
-impl<T> SplitBy for T
-    where
-    T: Sized + Iterator,
+pub fn split_by<I, P>(iter: I, predicate: P) -> (KeepUntil<I, P>, DropUntil<I, P>)
+where
+    I: Iterator,
+    P: Fn(&I::Item) -> bool
 {
-    fn split_by<P>(self, predicate: P) -> (KeepUntil<T, P>, DropUntil<T, P>)
-        where
-        Self: Sized,
-        P: Fn(&T::Item) -> bool
-    {
-        let iter = Rc::new(RefCell::new(self));
-        let predicate = Rc::new(predicate);
-        (
-            KeepUntil{
-                iter: Rc::clone(&iter).into(),
-                predicate: Rc::clone(&predicate),
-            },
-            DropUntil {
-                iter,
-                predicate: predicate.into()
-            }
-        )
-    }
+    let iter: Peekable<I> = iter.peekable();
+    let iter: Rc<RefCell<Peekable<I>>> = Rc::new(RefCell::new(iter));
+    let predicate = Rc::new(predicate);
+    (
+        KeepUntil{
+            iter: Some(Rc::clone(&iter)),
+            predicate: Rc::clone(&predicate),
+        },
+        DropUntil {
+            iter,
+            predicate: predicate.into()
+        }
+    )
 }
