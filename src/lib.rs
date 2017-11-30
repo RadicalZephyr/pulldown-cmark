@@ -41,6 +41,6 @@ mod puncttable;
 mod utils;
 
 pub use collect_while::collect_while;
-pub use ast::{Content, TagNode};
+pub use ast::{Content, Node};
 pub use passes::Parser;
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};

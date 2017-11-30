@@ -8,13 +8,13 @@ use std::vec::IntoIter;
 
 use super::collect_while;
 
-pub struct TagNode<'a> {
-    tag: Tag<'a>,
-    pub content: Content<'a, IntoIter<Event<'a>>>,
+pub enum Node<'a> {
+    Block(Tag<'a>, Content<'a, IntoIter<Event<'a>>>),
+    Item(Event<'a>),
 }
 
-impl<'a> TagNode<'a> {
-    pub fn try_from<I>(iter: &mut Peekable<I>) -> Option<TagNode<'a>>
+impl<'a> Node<'a> {
+    pub fn try_from<I>(iter: &mut Peekable<I>) -> Option<Node<'a>>
     where
         I: Iterator<Item = Event<'a>>,
     {
@@ -27,17 +27,13 @@ impl<'a> TagNode<'a> {
                         _ => false,
                     }
                 });
-                TagNode {
-                    tag: start_tag,
-                    content: Content::new(content.into_iter()),
-                }.into()
+                Node::Block(
+                        start_tag,
+                        Content::new(content.into_iter()),
+                ).into()
             },
             _ | None => None
         }
-    }
-
-    pub fn tag(&self) -> &Tag<'a> {
-        self.tag.borrow()
     }
 }
 
@@ -59,10 +55,10 @@ where I: Iterator<Item = Event<'a>> {
 
 impl<'a, I> Iterator for Content<'a, I>
 where I: Iterator<Item = Event<'a>> {
-    type Item = TagNode<'a>;
+    type Item = Node<'a>;
 
-    fn next(&mut self) -> Option<TagNode<'a>> {
-        TagNode::try_from(&mut self.iter)
+    fn next(&mut self) -> Option<Node<'a>> {
+        Node::try_from(&mut self.iter)
     }
 }
 
