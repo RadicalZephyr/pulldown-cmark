@@ -32,9 +32,10 @@ where
         }).and_then(|e| {
             let pred: &P = self.predicate.borrow();
             if pred(&e) {
-                None
-            } else {
+                self.iter = iter_opt;
                 Some(e)
+            } else {
+                None
             }
         })
     }
