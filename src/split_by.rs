@@ -1,13 +1,15 @@
-use std::cell::RefCell;
 use std::fmt::Debug;
-use std::iter::{FromIterator, Iterator};
-use std::rc::Rc;
+use std::iter::{Iterator, Peekable};
 use std::vec::IntoIter;
 
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[derive(Clone)]
-pub struct TakeWhile<I, P> {
-    iter: I,
+pub struct TakeWhile<I, P>
+where
+    I: Iterator,
+    I::Item: Clone,
+ {
+    iter: Peekable<I>,
     flag: bool,
     predicate: P,
 }
@@ -15,11 +17,13 @@ pub struct TakeWhile<I, P> {
 impl<I, P> TakeWhile<I, P>
 where
     I: Iterator,
+    I::Item: Clone,
     P: FnMut(&I::Item) -> bool,
 {
-    fn collect_with_rest(mut self) -> (Vec<I::Item>, I)
+    fn collect_with_rest(mut self) -> (Vec<I::Item>, Peekable<I>)
     {
         let mut v = vec![];
+
         loop {
             if let Some(x) = self.next() {
                 v.push(x);
@@ -31,8 +35,11 @@ where
     }
 }
 
-impl<I: Iterator, P> Iterator for TakeWhile<I, P>
-    where P: FnMut(&I::Item) -> bool
+impl<I, P> Iterator for TakeWhile<I, P>
+where
+    I: Iterator,
+    I::Item: Clone,
+    P: FnMut(&I::Item) -> bool,
 {
     type Item = I::Item;
 
@@ -41,14 +48,24 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
         if self.flag {
             None
         } else {
-            self.iter.next().and_then(|x| {
-                if (self.predicate)(&x) {
-                    Some(x)
-                } else {
-                    self.flag = true;
-                    None
-                }
-            })
+            let do_it = match self.iter.peek() {
+                Some(x) => {
+                    if (self.predicate)(x) {
+                        Some(true)
+                    } else {
+                        self.flag = true;
+                        Some(false)
+                    }
+                },
+                None => None,
+            };
+
+            match do_it {
+                Some(true) => {
+                    self.iter.next()
+                },
+                Some(false) | None => None,
+            }
         }
     }
 
@@ -59,20 +76,25 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
     }
 }
 
-fn take_while<I, P>(iter: I, predicate: P) -> TakeWhile<I, P> {
+fn take_while<I, P>(iter: I, predicate: P) -> TakeWhile<I, P>
+where
+    I: Iterator,
+    I::Item: Clone,
+{
     TakeWhile {
-        iter,
+        iter: iter.peekable(),
         flag: false,
         predicate
     }
 }
 
-pub fn split_by<I, P>(iter: I, predicate: P) -> (IntoIter<I::Item>, I)
+pub fn split_by<I, P>(iter: I, predicate: P) -> (IntoIter<I::Item>, Peekable<I>)
 where
-    I: Debug + Iterator,
+    I: Iterator,
+    I::Item: Clone,
     P: Fn(&I::Item) -> bool
 {
-    let (keeps, iter): (Vec<_>, I) = take_while(iter, predicate).collect_with_rest();
+    let (keeps, iter): (Vec<_>, Peekable<I>) = take_while(iter, predicate).collect_with_rest();
 
     (keeps.into_iter(),
      iter)
