@@ -7,80 +7,7 @@ use std::marker::PhantomData;
 use std::mem::{discriminant,swap};
 use std::rc::Rc;
 
-#[derive(Default)]
-struct KeepUntil<'a, 'b, I, F>
-where
-    'a: 'b,
-    I: 'b + Iterator<Item = Event<'a>>
-{
-    iter: Option<Rc<I>>,
-    pred: Rc<F>,
-    _t: PhantomData<Event<'a>>,
-    _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
-}
-
-#[derive(Default)]
-struct DropUntil<'a, 'b, I, F>
-where
-    'a: 'b,
-    I: 'b + Iterator<Item = Event<'a>>
-{
-    iter: Option<Rc<I>>,
-    pred: Rc<F>,
-    _t: PhantomData<Event<'a>>,
-    _t2: PhantomData<&'b Iterator<Item = Event<'a>>>,
-}
-
-
-impl<'a, 'b, I, F> Iterator for KeepUntil<'a, 'b, I, F>
-where
-    'a: 'b,
-    F: Fn(&Event<'a>) -> bool,
-    I: 'b + Iterator<Item = Event<'a>>
-{
-    type Item = Event<'a>;
-
-    fn next(&mut self) -> Option<Event<'a>> {
-        let mut iter_opt = None;
-        swap(&mut self.iter, &mut iter_opt);
-
-        iter_opt.as_mut().and_then(|iter_ref| {
-            Rc::get_mut(iter_ref)
-        }).and_then(|iter| {
-            iter.next()
-        }).and_then(|e| {
-            let pred: &F = self.pred.borrow();
-            if pred(&e) {
-                None
-            } else {
-                Some(e)
-            }
-        })
-    }
-}
-
-impl<'a, 'b, I, F> Iterator for DropUntil<'a, 'b, I, F>
-where
-    I: 'b + Iterator<Item = Event<'a>>
-{
-    type Item = Event<'a>;
-
-    fn next(&mut self) -> Option<Event<'a>> {
-        None
-    }
-}
-
-fn split_when<'a, 'b, I, F>(iter: I, pred: F) -> (KeepUntil<'a, 'b, I, F>, DropUntil<'a, 'b, I, F>)
-where
-    I: 'b + Iterator<Item = Event<'a>>
-{
-    let iter: Option<Rc<I>> = Rc::new(iter).into();
-    let pred = Rc::new(pred);
-    (KeepUntil { iter: iter.clone(), pred: pred.clone(),
-                 _t: Default::default(), _t2: Default::default() },
-     DropUntil { iter, pred,
-                 _t: Default::default(), _t2: Default::default() })
-}
+use super::split_by::SplitBy;
 
 pub struct Node<'a, 'b>
 where
@@ -110,7 +37,7 @@ where
                             _ => true,
                         }
                     };
-                    let (content, _rest) = split_when(iter, pred);
+                    let (content, _rest) = iter.split_by(pred);
                     let content = Content::new(Box::new(content));
                     (Node {
                         tag,
