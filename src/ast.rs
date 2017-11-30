@@ -1,22 +1,39 @@
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};
 
 use std::borrow::Borrow;
-use std::iter::Iterator;
+use std::iter::{Iterator, Peekable};
 use std::marker::PhantomData;
-use std::mem::{discriminant, swap};
-use std::rc::Rc;
+use std::mem::discriminant;
 use std::vec::IntoIter;
 
-use super::split_by::split_by;
+use super::collect_while;
 
 pub struct Node<'a> {
-    tag: Rc<Tag<'a>>,
+    tag: Tag<'a>,
     pub content: Content<'a, IntoIter<Event<'a>>>,
 }
 
 impl<'a> Node<'a> {
-    pub fn try_from<I>(iter: I) -> Option<Node<'a>> {
-        None
+    pub fn try_from<I>(iter: &mut Peekable<I>) -> Option<Node<'a>>
+    where
+        I: Iterator<Item = Event<'a>>,
+    {
+        match iter.next() {
+            Some(Event::Start(start_tag)) => {
+                let content: Vec<_> = collect_while(iter, |event| {
+                    match *event {
+                        Event::End(ref end_tag) =>
+                            discriminant(&start_tag) == discriminant(&end_tag),
+                        _ => false,
+                    }
+                });
+                Node {
+                    tag: start_tag,
+                    content: Content::new(content.into_iter()),
+                }.into()
+            },
+            _ | None => None
+        }
     }
 
     pub fn tag(&self) -> &Tag<'a> {
@@ -26,7 +43,7 @@ impl<'a> Node<'a> {
 
 pub struct Content<'a, I>
 where I: Iterator<Item = Event<'a>> {
-    iter: I,
+    iter: Peekable<I>,
     _t: PhantomData<&'a str>,
 }
 
@@ -34,7 +51,7 @@ impl<'a, I> Content<'a, I>
 where I: Iterator<Item = Event<'a>> {
     pub fn new(iter: I) -> Content<'a, I> {
         Content {
-            iter,
+            iter: iter.peekable(),
             _t: PhantomData,
         }
     }
@@ -45,7 +62,7 @@ where I: Iterator<Item = Event<'a>> {
     type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Node<'a>> {
-        None
+        Node::try_from(&mut self.iter)
     }
 }
 
