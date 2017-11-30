@@ -1,18 +1,13 @@
 use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::iter::Iterator;
 use std::mem::swap;
 use std::rc::Rc;
 
 pub struct KeepUntil<I, P> {
-    iter: Option<Rc<I>>,
+    iter: Option<Rc<RefCell<I>>>,
     predicate: Rc<P>,
 }
-
-pub struct DropUntil<I, P> {
-    iter: Option<Rc<I>>,
-    predicate: Rc<P>,
-}
-
 
 impl<I, P> Iterator for KeepUntil<I, P>
 where
@@ -25,20 +20,32 @@ where
         let mut iter_opt = None;
         swap(&mut self.iter, &mut iter_opt);
 
-        iter_opt.as_mut().and_then(|iter_ref| {
-            Rc::get_mut(iter_ref)
-        }).and_then(|iter| {
-            iter.next()
-        }).and_then(|e| {
-            let pred: &P = self.predicate.borrow();
-            if pred(&e) {
-                self.iter = iter_opt;
-                Some(e)
-            } else {
-                None
-            }
-        })
+        match iter_opt {
+            Some(iter_ref) => {
+                {
+                    let iter_copy = Rc::clone(&iter_ref);
+                    let result = iter_ref.try_borrow_mut().ok().and_then(|mut iter| {
+                        iter.next()
+                    }).and_then(|e| {
+                        let pred: &P = self.predicate.borrow();
+                        if pred(&e) {
+                            self.iter = Some(iter_copy);
+                            Some(e)
+                        } else {
+                            None
+                        }
+                    });
+                    result
+                }
+            },
+            None => None
+        }
     }
+}
+
+pub struct DropUntil<I, P> {
+    iter: Rc<RefCell<I>>,
+    predicate: Option<Rc<P>>,
 }
 
 impl<I, P> Iterator for DropUntil<I, P>
@@ -49,7 +56,32 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<I::Item> {
-        None
+        let mut pred_opt = None;
+        swap(&mut self.predicate, &mut pred_opt);
+
+        match pred_opt {
+            Some(predicate) => {
+                let predicate: &P = predicate.borrow();
+                let result = self.iter.try_borrow_mut().ok().and_then(|mut iter| {
+                    let mut item = None;
+                    loop {
+                        println!("Looping!");
+                        item = iter.next();
+                        match item {
+                            Some(ref item) => {
+                                if !predicate(item) {
+                                    break;
+                                }
+                            },
+                            None => (),
+                        }
+                    }
+                    item
+                });
+                result
+            },
+            None => self.iter.try_borrow_mut().ok().and_then(|mut iter| iter.next())
+        }
     }
 }
 
@@ -69,16 +101,16 @@ impl<T> SplitBy for T
         Self: Sized,
         P: Fn(&T::Item) -> bool
     {
-        let iter = Rc::new(self);
+        let iter = Rc::new(RefCell::new(self));
         let predicate = Rc::new(predicate);
         (
             KeepUntil{
-                iter: iter.clone().into(),
-                predicate: predicate.clone()
+                iter: Rc::clone(&iter).into(),
+                predicate: Rc::clone(&predicate),
             },
             DropUntil {
-                iter: iter.into(),
-                predicate
+                iter,
+                predicate: predicate.into()
             }
         )
     }
