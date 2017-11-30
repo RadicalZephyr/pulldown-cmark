@@ -1,15 +1,34 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::iter::Iterator;
+use std::iter::{FromIterator, Iterator};
 use std::rc::Rc;
 use std::vec::IntoIter;
 
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[derive(Clone)]
 pub struct TakeWhile<I, P> {
-    iter: Rc<RefCell<I>>,
+    iter: I,
     flag: bool,
     predicate: P,
+}
+
+impl<I, P> TakeWhile<I, P>
+where
+    I: Iterator,
+    P: FnMut(&I::Item) -> bool,
+{
+    fn collect_with_rest(mut self) -> (Vec<I::Item>, I)
+    {
+        let mut v = vec![];
+        loop {
+            if let Some(x) = self.next() {
+                v.push(x);
+            } else {
+                break;
+            }
+        }
+        (v, self.iter)
+    }
 }
 
 impl<I: Iterator, P> Iterator for TakeWhile<I, P>
@@ -22,33 +41,25 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
         if self.flag {
             None
         } else {
-            match self.iter.try_borrow_mut().ok() {
-                Some(mut iter) => {
-                    match iter.next() {
-                        Some(x) => {
-                            if (self.predicate)(&x) {
-                                Some(x)
-                            } else {
-                                self.flag = true;
-                                None
-                            }
-                        },
-                        None => None,
-                    }
-                },
-                None => None,
-            }
+            self.iter.next().and_then(|x| {
+                if (self.predicate)(&x) {
+                    Some(x)
+                } else {
+                    self.flag = true;
+                    None
+                }
+            })
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.borrow().size_hint();
+        let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
-fn take_while<I, P>(iter: Rc<RefCell<I>>, predicate: P) -> TakeWhile<I, P> {
+fn take_while<I, P>(iter: I, predicate: P) -> TakeWhile<I, P> {
     TakeWhile {
         iter,
         flag: false,
@@ -61,9 +72,8 @@ where
     I: Debug + Iterator,
     P: Fn(&I::Item) -> bool
 {
-    let iter = Rc::new(RefCell::new(iter));
-    let keeps: Vec<_> = take_while(Rc::clone(&iter), predicate).collect();
+    let (keeps, iter): (Vec<_>, I) = take_while(iter, predicate).collect_with_rest();
 
     (keeps.into_iter(),
-     Rc::try_unwrap(iter).unwrap().into_inner())
+     iter)
 }
