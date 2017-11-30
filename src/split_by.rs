@@ -32,16 +32,15 @@ where
                             let pred: &P = self.predicate.borrow();
                             if pred(item) {
                                 self.iter = Some(iter_copy);
-                                Some(())
+                                true
                             } else {
-                                None
+                                false
                             }
                         });
 
-                        if do_next.is_some() {
-                            iter.next()
-                        } else {
-                            None
+                        match do_next {
+                            Some(true) => iter.next(),
+                            Some(false) | None => None
                         }
                     });
                     result
@@ -73,20 +72,22 @@ where
 
         match pred_opt {
             Some(predicate) => {
-                let predicate: &P = predicate.borrow();
                 let result = self.iter.try_borrow_mut().ok().and_then(|mut iter| {
+                    let mut do_next = None;
                     loop {
-                        let item = iter.peek();
-                        match item {
-                            Some(item) => {
-                                if !predicate(item) {
-                                    break;
-                                }
-                            },
-                            None => (),
+                        do_next = iter.peek().map(|item| {
+                            let predicate: &P = predicate.borrow();
+                            !predicate(item)
+                        });
+                        if do_next.is_some() {
+                            break;
                         }
                     }
-                    iter.next()
+
+                    match do_next {
+                        Some(true) => iter.next(),
+                        Some(false) | None => None,
+                    }
                 });
                 result
             },
