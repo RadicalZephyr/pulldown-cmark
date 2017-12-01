@@ -23,11 +23,19 @@
 use ::ast;
 use parse::{RawParser, Event, Tag, Options, OPTION_FIRST_PASS};
 use std::collections::HashSet;
+use std::fmt;
 
 pub struct Parser<'a> {
     inner: RawParser<'a>,
     loose_lists: HashSet<usize>,
     loose_stack: Vec<bool>,
+}
+
+impl<'a> fmt::Debug for Parser<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Parser")
+            .finish()
+    }
 }
 
 impl<'a> Parser<'a> {
