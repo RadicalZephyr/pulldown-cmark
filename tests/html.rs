@@ -235,3 +235,16 @@ World
     assert_eq!("<p>Hello</p>\n<p>World</p>\n", buf);
 
 }
+
+
+#[test]
+fn renders_headings() {
+    let original = r##"# Hello
+"##;
+
+    let p = Parser::new(&original);
+    let mut buf = String::new();
+    html::push_html(&mut buf, p);
+
+    assert_eq!("<h1>Hello</h1>\n", buf);
+}
