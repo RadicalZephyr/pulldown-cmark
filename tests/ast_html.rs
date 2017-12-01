@@ -10,7 +10,7 @@ fn renders_text() {
     let mut content = p.into_ast();
     let mut buf = String::new();
     into_html(&mut content, &mut buf);
-    assert_eq!("<p>Hello</p>", buf);
+    assert_eq!("<p>Hello</p>\n", buf);
 }
 
 #[test]
@@ -24,6 +24,6 @@ World
     let mut content = p.into_ast();
     let mut buf = String::new();
     into_html(&mut content, &mut buf);
-    assert_eq!("<p>Hello</p><p>World</p>", buf);
+    assert_eq!("<p>Hello</p>\n<p>World</p>\n", buf);
 
 }

@@ -26,7 +26,7 @@ impl<'a> IntoHtml<Context> for Node<'a> {
             &mut Node::Block(ref tag, ref mut content) => {
                 buf.push_str("<p>");
                 content.render(context, buf);
-                buf.push_str("</p>");
+                buf.push_str("</p>\n");
             },
             &mut Node::Item(ref mut event) => event.render(context, buf),
         }
