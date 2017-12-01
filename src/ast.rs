@@ -32,6 +32,7 @@ impl<'a> Node<'a> {
                         Content::new(content.into_iter()),
                 ).into()
             },
+            Some(Event::End(_)) => Node::try_from(iter),
             Some(event) => Some(Node::Item(event)),
             None => None
         }
