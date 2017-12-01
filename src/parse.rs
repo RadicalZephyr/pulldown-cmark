@@ -114,7 +114,7 @@ pub enum Tag<'a> {
     Image(Cow<'a, str>, Cow<'a, str>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Event<'a> {
     Start(Tag<'a>),
     End(Tag<'a>),
