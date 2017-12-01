@@ -283,13 +283,8 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Ctx<'a, 'b, I> {
 /// "#);
 /// ```
 pub fn push_html<'a, I: Iterator<Item=Event<'a>>>(buf: &mut String, iter: I) {
-    let mut ctx = Ctx {
-        iter: iter,
-        buf: buf,
-        table_state: TableState::Head,
-        table_alignments: vec![],
-        table_cell_index: 0,
-        numbers: HashMap::new(),
-    };
-    ctx.run();
+    use ast;
+    use ast_html;
+    let mut content = ast::Content::new(iter);
+    ast_html::into_html(&mut content, buf);
 }
