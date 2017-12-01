@@ -1,6 +1,5 @@
 pub use parse::{Alignment, Event, Tag, Options, OPTION_ENABLE_TABLES, OPTION_ENABLE_FOOTNOTES};
 
-use std::borrow::Borrow;
 use std::iter::{Iterator, Peekable};
 use std::marker::PhantomData;
 use std::mem::discriminant;
@@ -24,8 +23,8 @@ impl<'a> Node<'a> {
                 let content: Vec<_> = collect_while(iter, |event| {
                     match *event {
                         Event::End(ref end_tag) =>
-                            discriminant(&start_tag) == discriminant(&end_tag),
-                        _ => false,
+                            discriminant(&start_tag) != discriminant(&end_tag),
+                        _ => true,
                     }
                 });
                 Node::Block(
@@ -33,7 +32,8 @@ impl<'a> Node<'a> {
                         Content::new(content.into_iter()),
                 ).into()
             },
-            _ | None => None
+            Some(event) => Some(Node::Item(event)),
+            None => None
         }
     }
 }
