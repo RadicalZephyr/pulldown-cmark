@@ -31,7 +31,7 @@ use parse::Alignment;
 use escape::{escape_html, escape_href};
 
 pub trait IntoHtml<C> {
-    fn render(self, ctx: &mut C, buf: &mut String);
+    fn render(&self, ctx: &mut C, buf: &mut String);
 }
 
 enum TableState {
@@ -42,85 +42,6 @@ enum TableState {
 pub fn fresh_line(buf: &mut String) {
     if !(buf.is_empty() || buf.ends_with('\n')) {
         buf.push('\n');
-    }
-}
-
-fn start_tag<'a>(buf: &mut String, tag: Tag<'a>) {
-    buf.push_str("<pre><code>");
-}
-
-fn end_tag<'a>(buf: &mut String, tag: Tag<'a>) {
-    buf.push_str("</code></pre>\n");
-}
-
-impl<'a> IntoHtml<Context<'a>> for Event<'a> {
-    fn render(self, ctx: &mut Context<'a>, buf: &mut String) {
-        match self {
-            Start(tag) => start_tag(buf, tag),
-            End(tag) => end_tag(buf, tag),
-            Text(text) => escape_html(buf, &text, false),
-            // Html(html) |
-            // InlineHtml(html) => buf.push_str(&html),
-            // SoftBreak => buf.push('\n'),
-            // HardBreak => buf.push_str("<br />\n"),
-            // FootnoteReference(name) => {
-            //     let len = ctx.numbers.len() + 1;
-            //     buf.push_str("<sup class=\"footnote-reference\"><a href=\"#");
-            //     escape_html(buf, &*name, false);
-            //     buf.push_str("\">");
-            //     let number = ctx.numbers.entry(name).or_insert(len);
-            //     buf.push_str(&*format!("{}", number));
-            //     buf.push_str("</a></sup>");
-            // },
-            _ => (),
-        }
-    }
-}
-
-pub struct Context<'a> {
-    numbers: HashMap<Cow<'a, str>, usize>,
-    table_state: TableState,
-    table_alignments: Vec<Alignment>,
-    table_cell_index: usize,
-}
-
-impl<'a> Context<'a> {
-    fn new() -> Context<'a> {
-        Context {
-            numbers: HashMap::new(),
-            table_state: TableState::Head,
-            table_alignments: vec![],
-            table_cell_index: 0,
-        }
-    }
-}
-
-pub struct Renderer<'a, T, I>
-where
-    T: 'a + IntoHtml<Context<'a>>,
-    I: Iterator<Item = T>
-{
-    events: I,
-    _t: PhantomData<&'a T>,
-}
-
-impl<'a, T ,I> Renderer<'a, T, I>
-where
-    T: IntoHtml<Context<'a>>,
-    I: Iterator<Item = T>
-{
-    pub fn new(events: I) -> Renderer<'a, T, I> {
-        Renderer {
-            events,
-            _t : PhantomData
-        }
-    }
-
-    pub fn render(mut self, buf: &mut String) {
-        let mut ctx = Context::new();
-        while let Some(event) = self.events.next() {
-            event.render(&mut ctx, buf)
-        }
     }
 }
 
@@ -369,6 +290,4 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Ctx<'a, 'b, I> {
 /// "#);
 /// ```
 pub fn push_html<'a, I: Iterator<Item = Event<'a>>>(buf: &mut String, iter: I) {
-    let renderer = Renderer::new(iter);
-    renderer.render(buf);
 }
