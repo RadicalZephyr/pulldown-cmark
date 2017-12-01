@@ -66,8 +66,8 @@ impl<'a> Parser<'a> {
         self.inner.get_offset()
     }
 
-    pub fn into_ast<'b>(self) -> ast::Content<'a, 'b> {
-        ast::Content::new(Box::new(self))
+    pub fn into_ast<'b>(self) -> ast::Content<'a, Self> {
+        ast::Content::new(self)
     }
 }
 
