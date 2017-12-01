@@ -8,6 +8,7 @@ use std::vec::IntoIter;
 
 use super::collect_while;
 
+#[derive(Debug)]
 pub enum Node<'a> {
     Block(Tag<'a>, Content<'a, IntoIter<Event<'a>>>),
     Item(Event<'a>),
@@ -37,6 +38,7 @@ impl<'a> Node<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Content<'a, I>
 where I: Iterator<Item = Event<'a>> {
     iter: Peekable<I>,
