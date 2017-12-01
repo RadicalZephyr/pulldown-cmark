@@ -31,7 +31,7 @@ use parse::Alignment;
 use escape::{escape_html, escape_href};
 
 pub trait IntoHtml<C> {
-    fn render(&self, ctx: &mut C, buf: &mut String);
+    fn render(&mut self, ctx: &mut C, buf: &mut String);
 }
 
 enum TableState {
