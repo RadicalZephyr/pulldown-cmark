@@ -2,6 +2,7 @@
 
 extern crate pulldown_cmark;
 
+
 #[cfg(unused)]
 mod unused {
 #[test]
@@ -199,8 +200,6 @@ console.log("fooooo");
 }
 </script>"##;
 
-    use pulldown_cmark::{Parser, html};
-
     let mut s = String::new();
 
     let p = Parser::new(&original);
@@ -208,4 +207,31 @@ console.log("fooooo");
 
     assert_eq!(expected, s);
 }
+}
+use pulldown_cmark::{Parser, html};
+
+#[test]
+fn renders_text() {
+    let original = r##"Hello"##;
+
+    let p = Parser::new(&original);
+    let mut buf = String::new();
+    html::push_html(&mut buf, p);
+
+    assert_eq!("<p>Hello</p>\n", buf);
+}
+
+#[test]
+fn renders_multiple_text() {
+    let original = r##"Hello
+
+World
+"##;
+
+    let p = Parser::new(&original);
+    let mut buf = String::new();
+    html::push_html(&mut buf, p);
+
+    assert_eq!("<p>Hello</p>\n<p>World</p>\n", buf);
+
 }
