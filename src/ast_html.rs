@@ -14,7 +14,7 @@ impl<'a> IntoHtml<Context> for Tag<'a> {
     fn render(&mut self, context: &mut Context, buf: &mut String) {
         match self {
             &mut Tag::Paragraph => buf.push('p'),
-            &mut Tag::Header(n) => buf.push_str("h1"),
+            &mut Tag::Header(n) => { buf.push('h'); buf.push_str(&format!("{}", n))},
             _ => (),
         }
     }
