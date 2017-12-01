@@ -17,13 +17,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-#![allow(unused_variables, dead_code)]
+
 //! HTML renderer that takes an iterator of events as input.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::marker::PhantomData;
 
 use parse::{Event, Tag};
 use parse::Event::{Start, End, Text, Html, InlineHtml, SoftBreak, HardBreak, FootnoteReference};
@@ -39,13 +38,7 @@ enum TableState {
     Body,
 }
 
-pub fn fresh_line(buf: &mut String) {
-    if !(buf.is_empty() || buf.ends_with('\n')) {
-        buf.push('\n');
-    }
-}
-
-struct Ctx<'a, 'b, I: IntoIterator> {
+struct Ctx<'a, 'b, I> {
     iter: I,
     buf: &'b mut String,
     table_state: TableState,
@@ -289,5 +282,14 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Ctx<'a, 'b, I> {
 /// </ul>
 /// "#);
 /// ```
-pub fn push_html<'a, I: Iterator<Item = Event<'a>>>(buf: &mut String, iter: I) {
+pub fn push_html<'a, I: Iterator<Item=Event<'a>>>(buf: &mut String, iter: I) {
+    let mut ctx = Ctx {
+        iter: iter,
+        buf: buf,
+        table_state: TableState::Head,
+        table_alignments: vec![],
+        table_cell_index: 0,
+        numbers: HashMap::new(),
+    };
+    ctx.run();
 }
