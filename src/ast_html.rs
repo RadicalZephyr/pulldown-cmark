@@ -12,9 +12,9 @@ impl Context {
 
 impl<'a> IntoHtml<Context> for Tag<'a> {
     fn render(&mut self, context: &mut Context, buf: &mut String) {
-        match self {
-            &mut Tag::Paragraph => buf.push('p'),
-            &mut Tag::Header(n) => { buf.push('h'); buf.push_str(&format!("{}", n))},
+        match *self {
+            Tag::Paragraph => buf.push('p'),
+            Tag::Header(n) => { buf.push('h'); buf.push_str(&format!("{}", n))},
             _ => (),
         }
     }
@@ -22,9 +22,9 @@ impl<'a> IntoHtml<Context> for Tag<'a> {
 
 impl<'a> IntoHtml<Context> for Event<'a> {
     fn render(&mut self, context: &mut Context, buf: &mut String) {
-        match self {
-            &mut Event::Start(_) | &mut Event::End(_) => unreachable!(),
-            &mut Event::Text(ref text) => buf.push_str(text),
+        match *self {
+            Event::Start(_) | Event::End(_) => unreachable!(),
+            Event::Text(ref text) => buf.push_str(text),
             _ => panic!("AHHHHHHH!!!!!!!!!!"),
         }
     }
@@ -32,8 +32,8 @@ impl<'a> IntoHtml<Context> for Event<'a> {
 
 impl<'a> IntoHtml<Context> for Node<'a> {
     fn render(&mut self, context: &mut Context, buf: &mut String) {
-        match self {
-            &mut Node::Block(ref mut tag, ref mut content) => {
+        match *self {
+            Node::Block(ref mut tag, ref mut content) => {
                 buf.push('<');
                 tag.render(context, buf);
                 buf.push('>');
@@ -44,7 +44,7 @@ impl<'a> IntoHtml<Context> for Node<'a> {
                 tag.render(context, buf);
                 buf.push_str(">\n")
             },
-            &mut Node::Item(ref mut event) => event.render(context, buf),
+            Node::Item(ref mut event) => event.render(context, buf),
         }
 
     }
